@@ -20,10 +20,11 @@ interface CartContextData {
 }
 
 const CartContext = createContext<CartContextData>({} as CartContextData);
+const STORAGE_NAME = '@RocketShoes:cart';
 
 export function CartProvider({ children }: CartProviderProps): JSX.Element {
   const [cart, setCart] = useState<Product[]>(() => {
-    const storagedCart = localStorage.getItem('@RocketShoes:cart');
+    const storagedCart = localStorage.getItem(STORAGE_NAME);
 
     if (storagedCart) {
       return JSON.parse(storagedCart);
@@ -34,8 +35,20 @@ export function CartProvider({ children }: CartProviderProps): JSX.Element {
 
   const addProduct = async (productId: number) => {
     try {
-      // const product = await api.get(`products/${productId}`);
-      // setCart([...cart, product]);
+      const item = cart.find(({ id }) => id === productId);
+
+      if (item) {
+        const amount = !item.amount ? 1 : item.amount + 1;
+        updateProductAmount({ productId, amount });
+      } else {
+        const { data } = await api.get(`products/${productId}`);
+        const updatedCart = [...cart, { ...data, amount: 1 }];
+
+        setCart(updatedCart);
+        localStorage.setItem(STORAGE_NAME, JSON.stringify(updatedCart));
+
+        console.log(updatedCart);
+      }
     } catch {
       // TODO
     }
@@ -43,7 +56,9 @@ export function CartProvider({ children }: CartProviderProps): JSX.Element {
 
   const removeProduct = (productId: number) => {
     try {
-      // TODO
+      const updatedCart = cart.filter(({ id }) => id !== productId);
+      setCart(updatedCart);
+      localStorage.setItem(STORAGE_NAME, JSON.stringify(updatedCart));
     } catch {
       // TODO
     }
@@ -51,7 +66,16 @@ export function CartProvider({ children }: CartProviderProps): JSX.Element {
 
   const updateProductAmount = async ({ productId, amount }: UpdateProductAmount) => {
     try {
-      // TODO
+      const updatedCart = cart.map((item) => {
+        if (item.id === productId) item.amount = amount;
+
+        return item;
+      });
+
+      setCart(updatedCart);
+      localStorage.setItem(STORAGE_NAME, JSON.stringify(updatedCart));
+
+      console.log(updatedCart);
     } catch {
       // TODO
     }
