@@ -1,7 +1,7 @@
 import { createContext, ReactNode, useContext, useState } from 'react';
 import { toast } from 'react-toastify';
 import { api } from '../services/api';
-import { Product, Stock } from '../types';
+import { Product } from '../types';
 
 interface CartProviderProps {
   children: ReactNode;
@@ -57,6 +57,8 @@ export function CartProvider({ children }: CartProviderProps): JSX.Element {
 
   const removeProduct = (productId: number) => {
     try {
+      productExists(productId);
+
       const updatedCart = cart.filter(({ id }) => id !== productId);
       setCart(updatedCart);
       localStorage.setItem(STORAGE_NAME, JSON.stringify(updatedCart));
@@ -66,10 +68,14 @@ export function CartProvider({ children }: CartProviderProps): JSX.Element {
   };
 
   const updateProductAmount = async ({ productId, amount }: UpdateProductAmount) => {
-    const hasStock = await hasStockQuantity(productId, amount);
-    if (!hasStock) return;
-
     try {
+      productExists(productId);
+
+      if (amount < 1) return;
+
+      const hasStock = await hasStockQuantity(productId, amount);
+      if (!hasStock) return;
+
       const updatedCart = cart.map((item) => {
         if (item.id === productId) item.amount = amount;
 
@@ -81,6 +87,12 @@ export function CartProvider({ children }: CartProviderProps): JSX.Element {
     } catch {
       toast.error('Erro na alteração de quantidade do produto');
     }
+  };
+
+  const findProduct = (productId: number) => cart.find(({ id }) => id === productId);
+
+  const productExists = (productId: number) => {
+    if (!findProduct(productId)) throw new Error();
   };
 
   const hasStockQuantity = async (productId: number, amount: number) => {
