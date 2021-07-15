@@ -1,4 +1,4 @@
-import { createContext, ReactNode, useContext, useState } from 'react';
+import { createContext, ReactNode, useContext, useEffect, useRef, useState } from 'react';
 import { toast } from 'react-toastify';
 import { api } from '../services/api';
 import { Product } from '../types';
@@ -33,6 +33,20 @@ export function CartProvider({ children }: CartProviderProps): JSX.Element {
     return [];
   });
 
+  const previousCartRef = useRef<Product[]>();
+
+  useEffect(() => {
+    previousCartRef.current = cart;
+  });
+
+  const cartPreviousValue = previousCartRef.current ?? cart;
+
+  useEffect(() => {
+    if (cartPreviousValue !== cart) {
+      localStorage.setItem(STORAGE_NAME, JSON.stringify(cart));
+    }
+  }, [cart, cartPreviousValue]);
+
   const addProduct = async (productId: number) => {
     try {
       const item = cart.find(({ id }) => id === productId);
@@ -48,7 +62,6 @@ export function CartProvider({ children }: CartProviderProps): JSX.Element {
         const updatedCart = [...cart, { ...data, amount: 1 }];
 
         setCart(updatedCart);
-        localStorage.setItem(STORAGE_NAME, JSON.stringify(updatedCart));
       }
     } catch {
       toast.error('Erro na adição do produto');
@@ -61,7 +74,6 @@ export function CartProvider({ children }: CartProviderProps): JSX.Element {
 
       const updatedCart = cart.filter(({ id }) => id !== productId);
       setCart(updatedCart);
-      localStorage.setItem(STORAGE_NAME, JSON.stringify(updatedCart));
     } catch {
       toast.error('Erro na remoção do produto');
     }
@@ -69,9 +81,9 @@ export function CartProvider({ children }: CartProviderProps): JSX.Element {
 
   const updateProductAmount = async ({ productId, amount }: UpdateProductAmount) => {
     try {
-      productExists(productId);
-
       if (amount < 1) return;
+
+      productExists(productId);
 
       const hasStock = await hasStockQuantity(productId, amount);
       if (!hasStock) return;
@@ -83,7 +95,6 @@ export function CartProvider({ children }: CartProviderProps): JSX.Element {
       });
 
       setCart(updatedCart);
-      localStorage.setItem(STORAGE_NAME, JSON.stringify(updatedCart));
     } catch {
       toast.error('Erro na alteração de quantidade do produto');
     }
